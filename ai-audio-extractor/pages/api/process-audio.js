@@ -28,18 +28,23 @@ apiRoute.post((req, res) => {
     }
 
     console.log('Executing separation script...');
-    const separationOutput = execSync(`python ${separateScript} ${filePath} ${outputDir}`);
-    console.log('Separation successful, stdout:', separationOutput.toString());
+    try {
+      const separationOutput = execSync(`python ${separateScript} ${filePath} ${outputDir}`);
+      console.log('Separation successful, stdout:', separationOutput.toString());
 
-    const stems = ['vocals.wav', 'drums.wav', 'bass.wav', 'other.wav', 'piano.wav'];
-    const stemPaths = stems.map(stem => path.join(outputDir, stem));
-    console.log('Generated stem paths:', stemPaths);
+      try {
+        const noteDetectionOutput = execSync(`python ${detectScript} ${path.join(outputDir, 'vocals.wav')}`);
+        console.log('Note detection successful, stdout:', noteDetectionOutput.toString());
+      } catch (error) {
+        console.error('Error during note detection:', error);
+        return res.status(500).json({ error: 'Error during note detection', details: error.message });
+      }
 
-    console.log('Executing note detection script...');
-    const noteDetectionOutput = execSync(`python ${detectScript} ${path.join(outputDir, 'vocals.wav')}`);
-    console.log('Note detection successful, stdout:', noteDetectionOutput.toString());
-
-    res.status(200).json({ notes: noteDetectionOutput.toString(), stems: stemPaths });
+      res.status(200).json({ notes: noteDetectionOutput.toString() });
+    } catch (error) {
+      console.error('Error during separation:', error);
+      return res.status(500).json({ error: 'Error during separation', details: error.message });
+    }
   } catch (error) {
     console.error('Unexpected error in API route:', error);
     res.status(500).json({ error: 'Unexpected error', details: error.message });

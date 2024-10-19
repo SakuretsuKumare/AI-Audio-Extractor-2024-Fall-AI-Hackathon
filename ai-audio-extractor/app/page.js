@@ -11,6 +11,7 @@ export default function Home() {
   // Updates the file state with the selected file
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
+    console.log('File selected:', e.target.files[0]);
   };
 
   // Handles the form submission
@@ -18,10 +19,12 @@ export default function Home() {
     e.preventDefault();
     if (!file) {
       setMessage('Please select a file first.');
+      console.log('No file selected');
       return;
     }
     setLoading(true);
     setMessage('Processing...');
+    console.log('Starting file upload and processing');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -33,10 +36,11 @@ export default function Home() {
       });
 
       const data = await response.json();
+      console.log('Response received:', data);
       if (response.ok) {
         if (data.stems && data.stems.length > 0) {
           setMessage('Processing complete!');
-          console.log(data.notes);
+          console.log('Stems generated:', data.stems);
 
           const stemLinks = data.stems.map((stem, index) => (
             <div key={index}>
@@ -48,6 +52,7 @@ export default function Home() {
           setStems(stemLinks);
         } else {
           setMessage('Processing failed: No stems were generated.');
+          console.log('No stems were generated');
         }
       } else {
         setMessage(`Error: ${data.error}. Details: ${data.details}`);
@@ -58,6 +63,7 @@ export default function Home() {
       console.error('Fetch error:', error);
     } finally {
       setLoading(false);
+      console.log('Processing finished');
     }
   };
 
