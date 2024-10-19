@@ -6,6 +6,7 @@ export default function Home() {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [stems, setStems] = useState([]);
 
   // Updates the file state with the selected file
   const handleFileChange = (e) => {
@@ -33,6 +34,16 @@ export default function Home() {
       if (response.ok) {
         setMessage('Processing complete!');
         console.log(data.notes);
+
+        // Safely handle stems
+        const stemLinks = (data.stems || []).map((stem, index) => (
+          <div key={index}>
+            <a href={stem} download>
+              Download {stem.split('/').pop()}
+            </a>
+          </div>
+        ));
+        setStems(stemLinks);
       } else {
         setMessage(`Error: ${data.error}. Details: ${data.details}`);
         console.error('Error details:', data);
@@ -64,6 +75,7 @@ export default function Home() {
           </button>
         </form>
         {message && <p className="mt-4 text-center">{message}</p>}
+        {stems.length > 0 && <div className="mt-4">{stems}</div>}
       </div>
     </div>
   );
