@@ -1,38 +1,53 @@
 import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import multer from 'multer';
+import nextConnect from 'next-connect';
 
-export default function handler(req, res) {
-  if (req.method === 'POST') {
-    const { filePath } = req.body;
+const upload = multer({ dest: 'uploads/' });
 
-    // Define paths for output and scripts
-    const outputDir = path.join(process.cwd(), 'output');
-    const separateScript = path.join(process.cwd(), 'separate_audio.py');
-    const detectScript = path.join(process.cwd(), 'note_detection.py');
+const apiRoute = nextConnect({
+  onError(error, req, res) {
+    res.status(501).json({ error: `Sorry something happened! ${error.message}` });
+  },
+  onNoMatch(req, res) {
+    res.status(405).json({ error: `Method '${req.method}' Not Allowed` });
+  },
+});
 
-    // Ensure output directory exists
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir);
+apiRoute.use(upload.single('file'));
+
+apiRoute.post((req, res) => {
+  const filePath = req.file.path;
+  const outputDir = path.join(process.cwd(), 'output');
+  const separateScript = path.join(process.cwd(), 'separate_audio.py');
+  const detectScript = path.join(process.cwd(), 'note_detection.py');
+
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir);
+  }
+
+  exec(`python ${separateScript} ${filePath} ${outputDir}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error during separation:', stderr);
+      return res.status(500).json({ error: 'Error during separation' });
     }
 
-    // Run the separation script
-    exec(`python ${separateScript} ${filePath} ${outputDir}`, (error, stdout, stderr) => {
+    exec(`python ${detectScript} ${path.join(outputDir, 'vocals.wav')}`, (error, stdout, stderr) => {
       if (error) {
-        return res.status(500).json({ error: stderr });
+        console.error('Error during note detection:', stderr);
+        return res.status(500).json({ error: 'Error during note detection' });
       }
 
-      // Run the note detection script
-      exec(`python ${detectScript} ${path.join(outputDir, 'vocals.wav')}`, (error, stdout, stderr) => {
-        if (error) {
-          return res.status(500).json({ error: stderr });
-        }
-
-        res.status(200).json({ notes: stdout });
-      });
+      res.status(200).json({ notes: stdout });
     });
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
-}
+  });
+});
+
+export default apiRoute;
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
