@@ -7,29 +7,39 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Updates the file state with the selected file
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
   };
 
+  // Handles the form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('Processing...');
 
+    // Creates a FormData object to send the file to the server
     const formData = new FormData();
     formData.append('file', file);
-
+  
     try {
+      // Sends the file to the server for processing
       const response = await fetch('/api/process-audio', {
         method: 'POST',
         body: formData,
       });
 
       const data = await response.json();
-      setMessage('Processing complete!');
-      console.log(data.notes);
+      if (response.ok) {
+        setMessage('Processing complete!');
+        console.log(data.notes);
+      } else {
+        setMessage(`Error: ${data.error}. Details: ${data.details}`);
+        console.error('Error details:', data);
+      }
     } catch (error) {
-      setMessage('An error occurred during processing.');
+      setMessage(`An error occurred during processing: ${error.message}`);
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }
