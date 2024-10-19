@@ -16,15 +16,17 @@ export default function Home() {
   // Handles the form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!file) {
+      setMessage('Please select a file first.');
+      return;
+    }
     setLoading(true);
     setMessage('Processing...');
 
-    // Creates a FormData object to send the file to the server
     const formData = new FormData();
     formData.append('file', file);
-  
+
     try {
-      // Sends the file to the server for processing
       const response = await fetch('/api/process-audio', {
         method: 'POST',
         body: formData,
@@ -32,18 +34,21 @@ export default function Home() {
 
       const data = await response.json();
       if (response.ok) {
-        setMessage('Processing complete!');
-        console.log(data.notes);
+        if (data.stems && data.stems.length > 0) {
+          setMessage('Processing complete!');
+          console.log(data.notes);
 
-        // Safely handle stems
-        const stemLinks = (data.stems || []).map((stem, index) => (
-          <div key={index}>
-            <a href={stem} download>
-              Download {stem.split('/').pop()}
-            </a>
-          </div>
-        ));
-        setStems(stemLinks);
+          const stemLinks = data.stems.map((stem, index) => (
+            <div key={index}>
+              <a href={stem} download>
+                Download {stem.split('/').pop()}
+              </a>
+            </div>
+          ));
+          setStems(stemLinks);
+        } else {
+          setMessage('Processing failed: No stems were generated.');
+        }
       } else {
         setMessage(`Error: ${data.error}. Details: ${data.details}`);
         console.error('Error details:', data);
@@ -69,7 +74,7 @@ export default function Home() {
           <button
             type="submit"
             className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
-            disabled={loading}
+            disabled={loading || !file}
           >
             {loading ? 'Processing...' : 'Upload and Process'}
           </button>
